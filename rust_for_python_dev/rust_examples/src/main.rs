@@ -28,6 +28,6 @@ fn main() {
     let user_by_id: HashMap<u64, User> = user_with_dedo_mail
         .into_iter()
         .map(|user| (user.id, user))
-        .collect(); // Fail because user_with_dedo_mail took ownership of all_user_list, would work either with iter instead of into_iter but we would endup with Vec<&User> of by clonning all_user_list.clone().into_iter()
+        .collect(); // Fail because user_with_dedo_mail took ownership of all_user_list, would work either with iter instead of into_iter but we would endup with Vec<&User> of by cloning all_user_list.clone().into_iter()
     println!("{:#?}", user_by_id)
 }
