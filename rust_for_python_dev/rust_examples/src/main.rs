@@ -1,3 +1,6 @@
+#![allow(dead_code)]
+mod csv_reading;
+
 fn main() {}
 
 #[cfg(test)]
