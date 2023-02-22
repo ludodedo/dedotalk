@@ -88,11 +88,15 @@ mod dedo_talk_test {
     #[test]
     fn read_and_parse_csv() {
         // https://raw.githubusercontent.com/JadenHow/Steam-Games-Recommendations/main/datasets/steam.csv
-        let mut reader = csv::Reader::from_path("/path/to/steam.csv").unwrap();
+        let mut reader = csv::Reader::from_path(
+            "/home/ludo/dedomainia/talks/dedotalk/rust_for_python_dev/data/steam.csv",
+        )
+        .unwrap();
 
-        let data: Vec<GameStruct> = reader.deserialize().map(|record| record.unwrap()).collect();
+        let data: Result<Vec<GameStruct>, _> = reader.deserialize().collect();
+        let Ok(valid_data) = data else {panic!()};
 
-        dbg!(&data[0]);
-        dbg!(&data.len());
+        dbg!(&valid_data[0]);
+        dbg!(&valid_data.len());
     }
 }
