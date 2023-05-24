@@ -26,13 +26,42 @@ async fn test_error_install() -> String {
     "Error while installing".to_string()
 }
 
+async fn test_post_message(
+    message: String,
+    channel_id: SlackChannelId,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    let client = SlackClient::new(SlackClientHyperConnector::new());
+    let token_value: SlackApiTokenValue = config_env_var("SLACK_TEST_TOKEN")?.into();
+    let token: SlackApiToken = SlackApiToken::new(token_value);
+    let session = client.open_session(&token);
+
+    // let message = WelcomeMessageTemplateParams::new("".into());
+
+    let post_chat_req = SlackApiChatPostMessageRequest::new(
+        "#general".into(),
+        SlackMessageContent::new().with_text(message),
+    );
+
+    let post_chat_resp = session.chat_post_message(&post_chat_req).await?;
+    println!("post chat resp: {:#?}", &post_chat_resp);
+
+    Ok(())
+}
+
 async fn test_push_event(
     Extension(_environment): Extension<Arc<SlackHyperListenerEnvironment>>,
     Extension(event): Extension<SlackPushEvent>,
 ) -> Response<Body> {
     println!("Received push event: {:?}", event);
+
     let body = match event {
         SlackPushEvent::UrlVerification(url_ver) => Body::from(url_ver.challenge),
+        SlackPushEvent::EventCallback(event_callback) => {
+            test_post_message("toto".into(), "#general".into())
+                .await
+                .unwrap();
+            Body::empty()
+        }
         _ => Body::empty(),
     };
     Response::builder()
@@ -41,7 +70,6 @@ async fn test_push_event(
         .body(body)
         .unwrap()
 }
-
 async fn test_command_event(
     Extension(_environment): Extension<Arc<SlackHyperListenerEnvironment>>,
     Extension(event): Extension<SlackCommandEvent>,
