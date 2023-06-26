@@ -54,9 +54,9 @@ async fn push_event(
     State(mut pool): State<ConnectionManager>,
 ) -> Response<Body> {
     println!("Received push event: {:?}", event);
-    // let s: String = pool.get("key1").await.unwrap();
-    let value_set: String = pool.set("key", "12").await.unwrap();
-    // println!("{ value_set }");
+    let s: String = pool.get("key").await.unwrap();
+    println!(" {s} ");
+    let value_set: String = pool.set("key", "11").await.unwrap();
     let body = match event {
         SlackPushEvent::UrlVerification(url_ver) => {
             println!("toto");
@@ -67,9 +67,25 @@ async fn push_event(
                 if message.sender.bot_id.is_some() {
                     Body::empty()
                 } else {
-                    let text = message.content.unwrap().text.unwrap();
-                    println!("{text}");
-                    post_message(text, "#general".into()).await.unwrap();
+                    let text = message.sender.user.unwrap().to_string();
+                    let mut last_range: Vec<String> = pool.lrange("Users", -1, -1).await.unwrap();
+                    match last_range.pop() {
+                        Some(last) => {
+                            if last == text {
+                                post_message(
+                                    "You are already in the queue".into(),
+                                    "#general".into(),
+                                )
+                                .await
+                                .unwrap();
+                            } else {
+                                add_user_to_queue(pool, text).await;
+                            };
+                        }
+                        None => {
+                            add_user_to_queue(pool, text).await;
+                        }
+                    }
                     Body::empty()
                 }
             }
@@ -84,11 +100,22 @@ async fn push_event(
         .unwrap()
 }
 
+async fn add_user_to_queue(mut pool: ConnectionManager, text: String) {
+    let var: u8 = pool.rpush("Users", text).await.unwrap();
+    let queue_content: Vec<String> = pool.lrange("Users", 0, -1).await.unwrap();
+    let queue_message = queue_content.join(", ");
+    post_message(queue_message, "#general".into())
+        .await
+        .unwrap();
+}
+
 pub fn config_env_var(name: &str) -> Result<String, String> {
     std::env::var(name).map_err(|e| format!("{}: {}", name, e))
 }
 async fn test_server() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let client = redis::Client::open("redis://127.0.0.1/")?;
+    println!("Starting server");
+
     let pool = redis::aio::ConnectionManager::new(client).await?;
 
     // let mut con = client.get_connection()?;
@@ -146,7 +173,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         .with_env_filter("axum_events_api_server=debug,slack_morphism=debug")
         .finish();
     tracing::subscriber::set_global_default(subscriber)?;
-
     test_server().await?;
 
     Ok(())
