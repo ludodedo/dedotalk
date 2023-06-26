@@ -58,7 +58,10 @@ async fn push_event(
     let value_set: String = pool.set("key", "12").await.unwrap();
     // println!("{ value_set }");
     let body = match event {
-        SlackPushEvent::UrlVerification(url_ver) => Body::from(url_ver.challenge),
+        SlackPushEvent::UrlVerification(url_ver) => {
+            println!("toto");
+            Body::from(url_ver.challenge)
+        }
         SlackPushEvent::EventCallback(event_callback) => match event_callback.event {
             SlackEventCallbackBody::Message(message) => {
                 if message.sender.bot_id.is_some() {
